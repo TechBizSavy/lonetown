@@ -98,7 +98,7 @@ model Match {
   videoCallUnlockedAt DateTime?
   
   // Unpinning tracking
-  unpinnedBy        String?     // userId who unpinned
+  unpinnedBy        String?     
   unpinnedAt        DateTime?
   
   // Relationships
@@ -130,10 +130,10 @@ model Message {
 
 model AssessmentQuestion {
   id            String   @id @default(cuid())
-  category      String   // "emotional_intelligence", "communication", "values", etc.
+  category      String  
   question      String
-  questionType  String   // "scale", "multiple_choice", "text"
-  options       Json?    // For multiple choice questions
+  questionType  String   
+  options       Json?    
   weight        Float    @default(1.0)
   order         Int
   isActive      Boolean  @default(true)
@@ -149,8 +149,8 @@ model AssessmentAnswer {
   id         String   @id @default(cuid())
   userId     String
   questionId String
-  answer     Json     // Flexible storage for different answer types
-  score      Float?   // Calculated score for this answer
+  answer     Json     
+  score      Float?  
   createdAt  DateTime @default(now())
   
   // Relationships
@@ -164,10 +164,10 @@ model AssessmentAnswer {
 model MatchFeedback {
   id            String   @id @default(cuid())
   matchId       String   @unique
-  recipientId   String   // User who receives the feedback
-  feedbackType  String   // "compatibility_mismatch", "communication_style", etc.
-  feedback      String   // Personalized feedback message
-  insights      Json     // Structured insights about why it didn't work
+  recipientId   String   
+  feedbackType  String  
+  feedback      String   
+  insights      Json    
   createdAt     DateTime @default(now())
   
   // Relationships
@@ -180,7 +180,7 @@ model MatchFeedback {
 model DailyMatchQueue {
   id                String   @id @default(cuid())
   userId            String
-  potentialMatches  Json     // Array of potential match user IDs with scores
+  potentialMatches  Json    
   lastUpdated       DateTime @default(now())
   processed         Boolean  @default(false)
   
