@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserState {
+  AVAILABLE
+  MATCHED
+  PINNED
+  FROZEN
+}
+
+enum MatchStatus {
+  ACTIVE
+  UNPINNED_BY_USER1
+  UNPINNED_BY_USER2
+  COMPLETED
+  EXPIRED
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  password              String
+  firstName             String
+  lastName              String
+  dateOfBirth           DateTime
+  age                   Int?
+  profileImage          String?
+  bio                   String?
+  location              String
+  gender                String
+  interestedIn          String
+  state                 UserState @default(AVAILABLE)
+  lastActiveAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Compatibility Assessment Scores
+  emotionalIntelligence Int      @default(0) // 0-100
+  communicationStyle    Int      @default(0) // 0-100
+  conflictResolution    Int      @default(0) // 0-100
+  relationshipGoals     Int      @default(0) // 0-100
+  lifeValues            Int      @default(0) // 0-100
+  personalityType       String?
+  loveLanguage          String?
+  attachmentStyle       String?
+  
+  // Freeze and timing management
+  frozenUntil           DateTime?
+  lastMatchAt           DateTime?
+  canReceiveMatchAt     DateTime?
+  
+  // Analytics
+  totalMatches          Int      @default(0)
+  successfulConnections Int      @default(0)
+  averageMessageCount   Float    @default(0)
+  intentionalityScore   Float    @default(50.0) // 0-100
+  
+  // Relationships
+  user1Matches          Match[]  @relation("User1Matches")
+  user2Matches          Match[]  @relation("User2Matches")
+  sentMessages          Message[] @relation("SentMessages")
+  receivedMessages      Message[] @relation("ReceivedMessages")
+  assessmentAnswers     AssessmentAnswer[]
+  matchFeedback         MatchFeedback[]
+  
+  @@map("users")
+}
+
+model Match {
+  id                String      @id @default(cuid())
+  user1Id           String
+  user2Id           String
+  status            MatchStatus @default(ACTIVE)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  expiresAt         DateTime?
+  
+  // Compatibility scores
+  compatibilityScore Float      @default(0) // 0-100
+  emotionalMatch    Float       @default(0) // 0-100
+  communicationMatch Float      @default(0) // 0-100
+  valuesMatch       Float       @default(0) // 0-100
+  personalityMatch  Float       @default(0) // 0-100
+  
+  // Milestone tracking
+  messageCount      Int         @default(0)
+  firstMessageAt    DateTime?
+  videoCallUnlocked Boolean     @default(false)
+  videoCallUnlockedAt DateTime?
+  
+  // Unpinning tracking
+  unpinnedBy        String?     // userId who unpinned
+  unpinnedAt        DateTime?
+  
+  // Relationships
+  user1             User        @relation("User1Matches", fields: [user1Id], references: [id])
+  user2             User        @relation("User2Matches", fields: [user2Id], references: [id])
+  messages          Message[]
+  feedback          MatchFeedback?
+  
+  @@unique([user1Id, user2Id])
+  @@map("matches")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  matchId     String
+  senderId    String
+  receiverId  String
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  // Relationships
+  match       Match    @relation(fields: [matchId], references: [id])
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  @@map("messages")
+}
+
+model AssessmentQuestion {
+  id            String   @id @default(cuid())
+  category      String   // "emotional_intelligence", "communication", "values", etc.
+  question      String
+  questionType  String   // "scale", "multiple_choice", "text"
+  options       Json?    // For multiple choice questions
+  weight        Float    @default(1.0)
+  order         Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  
+  // Relationships
+  answers       AssessmentAnswer[]
+  
+  @@map("assessment_questions")
+}
+
+model AssessmentAnswer {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  answer     Json     // Flexible storage for different answer types
+  score      Float?   // Calculated score for this answer
+  createdAt  DateTime @default(now())
+  
+  // Relationships
+  user       User     @relation(fields: [userId], references: [id])
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id])
+  
+  @@unique([userId, questionId])
+  @@map("assessment_answers")
+}
+
+model MatchFeedback {
+  id            String   @id @default(cuid())
+  matchId       String   @unique
+  recipientId   String   // User who receives the feedback
+  feedbackType  String   // "compatibility_mismatch", "communication_style", etc.
+  feedback      String   // Personalized feedback message
+  insights      Json     // Structured insights about why it didn't work
+  createdAt     DateTime @default(now())
+  
+  // Relationships
+  match         Match    @relation(fields: [matchId], references: [id])
+  recipient     User     @relation(fields: [recipientId], references: [id])
+  
+  @@map("match_feedback")
+}
+
+model DailyMatchQueue {
+  id                String   @id @default(cuid())
+  userId            String
+  potentialMatches  Json     // Array of potential match user IDs with scores
+  lastUpdated       DateTime @default(now())
+  processed         Boolean  @default(false)
+  
+  @@unique([userId])
+  @@map("daily_match_queue")
+}
